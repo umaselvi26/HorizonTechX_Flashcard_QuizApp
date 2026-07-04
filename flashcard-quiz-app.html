@@ -1,0 +1,529 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Flashcard Quiz App</title>
+<style>
+  * { box-sizing: border-box; margin: 0; padding: 0; }
+  :root {
+    --bg-gradient: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+    --card-bg: rgba(255,255,255,0.95);
+    --card-flipped-bg: rgba(230,235,255,0.95);
+    --text-color: #333;
+    --text-flipped-color: #4338ca;
+  }
+  body.dark-mode {
+    --bg-gradient: linear-gradient(135deg, #1e1e2f 0%, #0f0f1a 100%);
+    --card-bg: rgba(30,30,45,0.95);
+    --card-flipped-bg: rgba(40,30,60,0.95);
+    --text-color: #f1f1f1;
+    --text-flipped-color: #b9a6ff;
+  }
+  body {
+    font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+    background: var(--bg-gradient), url('BG QUIZ.jpeg');
+    background-blend-mode: overlay;
+    background-repeat: no-repeat;
+    background-position: center center;
+    background-attachment: fixed;
+    background-size: cover;
+    min-height: 100vh;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    padding: 30px 15px;
+    transition: background 0.4s;
+  }
+  .theme-toggle {
+    position: fixed;
+    top: 18px;
+    right: 18px;
+    background: rgba(255,255,255,0.2);
+    border: 2px solid rgba(255,255,255,0.5);
+    color: white;
+    width: 46px;
+    height: 46px;
+    border-radius: 50%;
+    font-size: 20px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    cursor: pointer;
+    z-index: 200;
+  }
+  h1 {
+    color: white;
+    margin-bottom: 25px;
+    text-shadow: 0 2px 8px rgba(0,0,0,0.2);
+    text-align: center;
+  }
+  .container {
+    width: 100%;
+    max-width: 480px;
+  }
+  .card-counter {
+    color: white;
+    text-align: center;
+    margin-bottom: 15px;
+    font-size: 14px;
+    opacity: 0.9;
+  }
+  .scoreboard {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    background: rgba(255,255,255,0.15);
+    border-radius: 12px;
+    padding: 10px 15px;
+    margin-bottom: 12px;
+    color: white;
+    font-size: 14px;
+    font-weight: 600;
+  }
+  .score-item { display: flex; align-items: center; gap: 5px; }
+  .score-known { color: #4ade80; }
+  .score-unknown { color: #f87171; }
+  .progress-bar-container {
+    width: 100%;
+    height: 10px;
+    background: rgba(255,255,255,0.25);
+    border-radius: 10px;
+    overflow: hidden;
+    margin-bottom: 15px;
+  }
+  .progress-bar-fill {
+    height: 100%;
+    background: linear-gradient(90deg, #4ade80, #22c55e);
+    border-radius: 10px;
+    transition: width 0.4s ease;
+    width: 0%;
+  }
+  .know-buttons {
+    display: flex;
+    gap: 10px;
+    margin-top: 12px;
+  }
+  .btn-know { background: #22c55e; color: white; flex: 1; }
+  .btn-dontknow { background: #f87171; color: white; flex: 1; }
+  .btn-reset { background: rgba(255,255,255,0.2); color: white; flex: 1; border: 1px solid rgba(255,255,255,0.4); }
+  .flashcard {
+    background: var(--card-bg);
+    border-radius: 18px;
+    height: 260px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    text-align: center;
+    padding: 25px;
+    font-size: 22px;
+    font-weight: 600;
+    color: var(--text-color);
+    cursor: pointer;
+    box-shadow: 0 10px 30px rgba(0,0,0,0.4);
+    transition: transform 0.4s, background 0.4s, color 0.4s;
+    position: relative;
+    overflow: auto;
+  }
+  .flashcard.flipped {
+    background: var(--card-flipped-bg);
+    color: var(--text-flipped-color);
+  }
+  .flashcard:active { transform: scale(0.98); }
+  .tag {
+    position: absolute;
+    top: 12px;
+    left: 12px;
+    font-size: 11px;
+    background: #667eea;
+    color: white;
+    padding: 3px 10px;
+    border-radius: 20px;
+    font-weight: 500;
+  }
+  .tag.answer { background: #4338ca; }
+  .nav-buttons {
+    display: flex;
+    justify-content: space-between;
+    margin-top: 18px;
+    gap: 10px;
+  }
+  button {
+    border: none;
+    border-radius: 10px;
+    padding: 12px 18px;
+    font-size: 14px;
+    font-weight: 600;
+    cursor: pointer;
+    transition: opacity 0.2s, transform 0.15s;
+  }
+  button:active { transform: scale(0.96); }
+  .btn-nav {
+    background: rgba(255,255,255,0.9);
+    color: #4338ca;
+    flex: 1;
+  }
+  .btn-show {
+    background: #4338ca;
+    color: white;
+    flex: 1.4;
+  }
+  .actions {
+    display: flex;
+    gap: 10px;
+    margin-top: 15px;
+  }
+  .btn-add { background: #22c55e; color: white; flex: 1; }
+  .btn-edit { background: #f59e0b; color: white; flex: 1; }
+  .btn-delete { background: #ef4444; color: white; flex: 1; }
+  .empty-state {
+    color: white;
+    text-align: center;
+    margin-top: 50px;
+    font-size: 16px;
+    opacity: 0.9;
+  }
+
+  /* Modal */
+  .modal-overlay {
+    display: none;
+    position: fixed;
+    top: 0; left: 0; right: 0; bottom: 0;
+    background: rgba(0,0,0,0.5);
+    align-items: center;
+    justify-content: center;
+    z-index: 100;
+    padding: 20px;
+  }
+  .modal-overlay.active { display: flex; }
+  .modal-box {
+    background: white;
+    border-radius: 16px;
+    padding: 25px;
+    width: 100%;
+    max-width: 400px;
+  }
+  .modal-box h3 { color: #333; margin-bottom: 15px; }
+  .modal-box label {
+    display: block;
+    font-size: 13px;
+    color: #555;
+    margin-bottom: 5px;
+    margin-top: 12px;
+    font-weight: 600;
+  }
+  .modal-box input, .modal-box textarea {
+    width: 100%;
+    padding: 10px;
+    border: 1px solid #ddd;
+    border-radius: 8px;
+    font-size: 14px;
+    font-family: inherit;
+    resize: vertical;
+  }
+  .modal-actions {
+    display: flex;
+    gap: 10px;
+    margin-top: 20px;
+  }
+  .btn-save { background: #4338ca; color: white; flex: 1; }
+  .btn-cancel { background: #e5e7eb; color: #333; flex: 1; }
+</style>
+</head>
+<body>
+
+<button class="theme-toggle" id="themeToggle" onclick="toggleTheme()">🌙</button>
+
+<h1>🎓 Flashcard Quiz App</h1>
+
+<div class="container">
+  <div class="scoreboard">
+    <div class="score-item score-known">✅ Known: <span id="knownCount">0</span></div>
+    <div class="score-item score-unknown">❌ Unknown: <span id="unknownCount">0</span></div>
+  </div>
+  <div class="progress-bar-container">
+    <div class="progress-bar-fill" id="progressBar"></div>
+  </div>
+  <div class="card-counter" id="counter"></div>
+
+  <div id="cardArea">
+    <div class="flashcard" id="flashcard" onclick="flipCard()">
+      <span class="tag" id="cardTag">Question</span>
+      <span id="cardText">Click "Add" to create your first flashcard!</span>
+    </div>
+
+    <div class="nav-buttons">
+      <button class="btn-nav" onclick="prevCard()">⬅ Prev</button>
+      <button class="btn-show" onclick="flipCard()">🔄 Show Answer</button>
+      <button class="btn-nav" onclick="nextCard()">Next ➡</button>
+    </div>
+
+    <div class="know-buttons">
+      <button class="btn-know" onclick="markKnown()">✅ I Know It</button>
+      <button class="btn-dontknow" onclick="markUnknown()">❌ Don't Know</button>
+    </div>
+
+    <div class="actions">
+      <button class="btn-add" onclick="openModal()">➕ Add</button>
+      <button class="btn-edit" onclick="editCard()">✏️ Edit</button>
+      <button class="btn-delete" onclick="deleteCard()">🗑️ Delete</button>
+    </div>
+    <div class="know-buttons">
+      <button class="btn-reset" onclick="resetScore()">🔄 Reset Score</button>
+    </div>
+  </div>
+</div>
+
+<!-- Modal -->
+<div class="modal-overlay" id="modalOverlay">
+  <div class="modal-box">
+    <h3 id="modalTitle">Add Flashcard</h3>
+    <label>Question</label>
+    <textarea id="inputQuestion" rows="2" placeholder="Enter question..."></textarea>
+    <label>Answer</label>
+    <textarea id="inputAnswer" rows="2" placeholder="Enter answer..."></textarea>
+    <div class="modal-actions">
+      <button class="btn-cancel" onclick="closeModal()">Cancel</button>
+      <button class="btn-save" onclick="saveCard()">Save</button>
+    </div>
+  </div>
+</div>
+
+<script>
+  let cards = JSON.parse(localStorage.getItem('flashcards')) || [
+    { q: "What is HTML?", a: "HyperText Markup Language - used to structure web pages." },
+    { q: "Which language is used to style web pages?", a: "CSS" },
+    { q: "What does SQL stand for?", a: "Structured Query Language" },
+    { q: "Which language is used to add interactivity to web pages?", a: "JavaScript" },
+    { q: "Which symbol is used for comments in Python??", a: "#" },
+    { q: "Which keyword is used to create a function in JavaScript?", a: "function" },
+    { q: "Which SQL command is used to retrieve data from a table?", a: "SELECT" },
+    { q: "What is the output of print (4+8) in Python?", a: "12" },
+    { q: "Which programming language is widely used for data analysis and AI?", a: "Python" },
+    { q: "Which JavaScript function is used to display a popup message?", a: "alert()" },
+    { q: "What is the extension of a Python file?", a: ".py" },
+    { q: "Which HTML tag is used to create a numbered list?", a: "<ol>" },
+    { q: "What does CSS stand for?", a: "Cascading Style Sheets" },
+    { q: "Which HTML tag is used to create a checkbox?", a: '<input type="checkbox">' },
+    { q: "Which SQL command is used to remove a table?", a: "DROP" },
+    { q: "Which keyword is used to create a variable in JavaScript?", a: "var" },
+    { q: "Which CSS property is used to make text bold?", a: "font-weight" },
+    { q: "What is the output of 5*8 in Python?", a: "40" },
+    { q: "Which SQL clause is used to filter records?", a: "WHERE" },
+    { q: "Which tag is used to create a hyperlink in HTML?", a: "<a>" },
+  ];
+
+  let currentIndex = 0;
+  let isFlipped = false;
+  let editMode = false;
+  let knownCount = parseInt(localStorage.getItem('knownCount')) || 0;
+  let unknownCount = parseInt(localStorage.getItem('unknownCount')) || 0;
+
+  function updateScoreboard() {
+    document.getElementById('knownCount').textContent = knownCount;
+    document.getElementById('unknownCount').textContent = unknownCount;
+    const total = knownCount + unknownCount;
+    const percent = total === 0 ? 0 : Math.round((knownCount / total) * 100);
+    document.getElementById('progressBar').style.width = percent + '%';
+  }
+
+  function markKnown() {
+    if (cards.length === 0) return;
+    knownCount++;
+    localStorage.setItem('knownCount', knownCount);
+    updateScoreboard();
+    playSaveSound();
+    nextCard();
+  }
+
+  function markUnknown() {
+    if (cards.length === 0) return;
+    unknownCount++;
+    localStorage.setItem('unknownCount', unknownCount);
+    updateScoreboard();
+    playDeleteSound();
+    nextCard();
+  }
+
+  function resetScore() {
+    knownCount = 0;
+    unknownCount = 0;
+    localStorage.setItem('knownCount', 0);
+    localStorage.setItem('unknownCount', 0);
+    updateScoreboard();
+  }
+
+  function saveToStorage() {
+    localStorage.setItem('flashcards', JSON.stringify(cards));
+  }
+
+  function renderCard() {
+    const cardText = document.getElementById('cardText');
+    const cardTag = document.getElementById('cardTag');
+    const flashcard = document.getElementById('flashcard');
+    const counter = document.getElementById('counter');
+
+    if (cards.length === 0) {
+      cardText.textContent = 'No flashcards yet. Click "Add" to create one!';
+      cardTag.textContent = 'Empty';
+      counter.textContent = '';
+      flashcard.classList.remove('flipped');
+      return;
+    }
+
+    counter.textContent = `Card ${currentIndex + 1} of ${cards.length}`;
+    const current = cards[currentIndex];
+
+    if (isFlipped) {
+      cardText.textContent = current.a;
+      cardTag.textContent = 'Answer';
+      cardTag.classList.add('answer');
+      flashcard.classList.add('flipped');
+    } else {
+      cardText.textContent = current.q;
+      cardTag.textContent = 'Question';
+      cardTag.classList.remove('answer');
+      flashcard.classList.remove('flipped');
+    }
+  }
+
+  // Sound Effects using Web Audio API (no files needed!)
+  const audioCtx = new (window.AudioContext || window.webkitAudioContext)();
+
+  function playTone(frequency, duration, type = 'sine') {
+    const oscillator = audioCtx.createOscillator();
+    const gainNode = audioCtx.createGain();
+    oscillator.connect(gainNode);
+    gainNode.connect(audioCtx.destination);
+    oscillator.type = type;
+    oscillator.frequency.value = frequency;
+    gainNode.gain.setValueAtTime(0.15, audioCtx.currentTime);
+    gainNode.gain.exponentialRampToValueAtTime(0.001, audioCtx.currentTime + duration);
+    oscillator.start();
+    oscillator.stop(audioCtx.currentTime + duration);
+  }
+
+  function playFlipSound() { playTone(500, 0.15, 'triangle'); }
+  function playClickSound() { playTone(800, 0.08, 'sine'); }
+  function playSaveSound() {
+    playTone(600, 0.1, 'sine');
+    setTimeout(() => playTone(900, 0.15, 'sine'), 100);
+  }
+  function playDeleteSound() { playTone(200, 0.2, 'sawtooth'); }
+
+  function flipCard() {
+    if (cards.length === 0) return;
+    isFlipped = !isFlipped;
+    playFlipSound();
+    renderCard();
+  }
+
+  function nextCard() {
+    if (cards.length === 0) return;
+    currentIndex = (currentIndex + 1) % cards.length;
+    isFlipped = false;
+    playClickSound();
+    renderCard();
+  }
+
+  function prevCard() {
+    if (cards.length === 0) return;
+    currentIndex = (currentIndex - 1 + cards.length) % cards.length;
+    isFlipped = false;
+    playClickSound();
+    renderCard();
+  }
+
+  function openModal() {
+    editMode = false;
+    document.getElementById('modalTitle').textContent = 'Add Flashcard';
+    document.getElementById('inputQuestion').value = '';
+    document.getElementById('inputAnswer').value = '';
+    document.getElementById('modalOverlay').classList.add('active');
+  }
+
+  function editCard() {
+    if (cards.length === 0) {
+      alert('No flashcard to edit. Add one first!');
+      return;
+    }
+    editMode = true;
+    document.getElementById('modalTitle').textContent = 'Edit Flashcard';
+    document.getElementById('inputQuestion').value = cards[currentIndex].q;
+    document.getElementById('inputAnswer').value = cards[currentIndex].a;
+    document.getElementById('modalOverlay').classList.add('active');
+  }
+
+  function closeModal() {
+    document.getElementById('modalOverlay').classList.remove('active');
+  }
+
+  function saveCard() {
+    const q = document.getElementById('inputQuestion').value.trim();
+    const a = document.getElementById('inputAnswer').value.trim();
+
+    if (!q || !a) {
+      alert('Please fill both Question and Answer!');
+      return;
+    }
+
+    if (editMode) {
+      cards[currentIndex] = { q, a };
+    } else {
+      cards.push({ q, a });
+      currentIndex = cards.length - 1;
+    }
+
+    isFlipped = false;
+    saveToStorage();
+    playSaveSound();
+    renderCard();
+    closeModal();
+  }
+
+  function deleteCard() {
+    if (cards.length === 0) {
+      alert('No flashcard to delete!');
+      return;
+    }
+    if (!confirm('Delete this flashcard?')) return;
+
+    cards.splice(currentIndex, 1);
+    if (currentIndex >= cards.length) currentIndex = Math.max(0, cards.length - 1);
+    isFlipped = false;
+    saveToStorage();
+    playDeleteSound();
+    renderCard();
+  }
+
+  // Dark/Light Mode Toggle
+  function applyTheme(theme) {
+    const themeBtn = document.getElementById('themeToggle');
+    if (theme === 'dark') {
+      document.body.classList.add('dark-mode');
+      themeBtn.textContent = '☀️';
+    } else {
+      document.body.classList.remove('dark-mode');
+      themeBtn.textContent = '🌙';
+    }
+  }
+
+  function toggleTheme() {
+    const isDark = document.body.classList.contains('dark-mode');
+    const newTheme = isDark ? 'light' : 'dark';
+    applyTheme(newTheme);
+    localStorage.setItem('theme', newTheme);
+    playClickSound();
+  }
+
+  // Load saved theme on page load
+  const savedTheme = localStorage.getItem('theme') || 'light';
+  applyTheme(savedTheme);
+
+  // Init
+  updateScoreboard();
+  renderCard();
+</script>
+
+</body>
+</html>
